@@ -1,6 +1,6 @@
 # redigo-cluster
-it's may be the simplest cluster extension for redigo.
-redigo-cluster has no redundant interfaces besides redis.Conn, which is as same as redigo.
+it's may be the simplest cluster extension for redigo.  
+redigo-cluster has no redundant interfaces besides redis.Conn, which is as same as redigo.  
 sample: cluster_test.go
 ```go
 func TestClusterPipelineCommands(t *testing.T) {
@@ -49,3 +49,6 @@ func TestClusterPipelineCommands(t *testing.T) {
 	}
 }
 ```
+
+# redio link
+[github.com/garyburd/redigo/redis](github.com/garyburd/redigo/redis)
