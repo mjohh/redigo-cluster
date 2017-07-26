@@ -20,20 +20,20 @@
 /* 4) scan func is too complicated, though it is used easily.
 */
 
-package cluster 
+package cluster
 
 import (
 	"errors"
 	"fmt"
-	"strings"
-	"time"
-	"sync"
 	"github.com/garyburd/redigo/redis"
+	"strings"
+	"sync"
+	"time"
 )
 
 type slot struct {
 	redis.Conn
-	startslot uint16 
+	startslot uint16
 	endslot   uint16
 	ip        string
 	port      int64
@@ -42,7 +42,7 @@ type slot struct {
 type cluster struct {
 	slots []*slot
 	// The sequence of slot idx.
-	// Cmds in one pipeline operation, 
+	// Cmds in one pipeline operation,
 	// will be sharding into low level pipelines according key values.
 	// Useful for getting replys in order from low level pipelines.
 	shardingSeq []int
@@ -52,7 +52,7 @@ type cluster struct {
 }
 
 const (
-	kClusterSlots	= 16384
+	kClusterSlots = 16384
 )
 
 // NewCluster return a cluster obj contain all connections to each node in cluster.
@@ -87,12 +87,12 @@ func NewCluster(c redis.Conn) (redis.Conn, error) {
 			return nil, err
 		}
 	}
-	shardings := make ([]bool, len(slots))
+	shardings := make([]bool, len(slots))
 	return &cluster{slots: slots, shardingSeq: make([]int, 0), shardings: shardings}, nil
 }
 
 // findSlot return slot index via key hash val
-func (cl *cluster) findSlot(key string) (int, error){
+func (cl *cluster) findSlot(key string) (int, error) {
 	hashslot := hash(key)
 	for i, slot := range cl.slots {
 		if slot.startslot < hashslot && hashslot <= slot.endslot {
@@ -100,7 +100,7 @@ func (cl *cluster) findSlot(key string) (int, error){
 		}
 	}
 	return -1, errors.New("redigo-cluster: could not find slot via hash!")
-} 
+}
 
 // implement Conn interface
 func (cl *cluster) Close() error {
@@ -116,7 +116,7 @@ func (cl *cluster) Err() error {
 // Do Sends a command to the server and returns the received reply.
 // if no key, chose slot[0]
 func (cl *cluster) Do(cmd string, args ...interface{}) (reply interface{}, err error) {
-	if len(args)==0 {
+	if len(args) == 0 {
 		reply, err = cl.slots[0].Do(cmd)
 		return
 	}
@@ -135,7 +135,7 @@ func (cl *cluster) Do(cmd string, args ...interface{}) (reply interface{}, err e
 // Send writes the command to the client's output buffer. And recording
 // sharding sequence and sharding slot, which are useful for Receive() and Flush()
 func (cl *cluster) Send(cmd string, args ...interface{}) error {
-	if len(args)==0 {
+	if len(args) == 0 {
 		err := cl.slots[0].Send(cmd)
 		if err == nil {
 			cl.shardingSeq = append(cl.shardingSeq, 0)
@@ -167,7 +167,7 @@ func (cl *cluster) Flush() error {
 	var wg sync.WaitGroup
 	var err error
 	for i, b := range cl.shardings {
-		if b==false{
+		if b == false {
 			continue
 		}
 		// clean flag
@@ -185,6 +185,7 @@ func (cl *cluster) Flush() error {
 	wg.Wait()
 	return err
 }
+
 /*
 func (cl *cluster) Flush() error {
 	var err error
@@ -290,7 +291,7 @@ func connectAll(slots []*slot) error {
 }
 
 // reloadSlots return new cluster slot objs, via any one existing valid connection.
-// it's always called when one connection faild, which may cause cluster info change. 
+// it's always called when one connection faild, which may cause cluster info change.
 func reloadSlots(slots []*slot) ([]*slot, error) {
 	for _, slot := range slots {
 		s := fmt.Sprintf("%s:%d", slot.ip, slot.port)
@@ -298,13 +299,12 @@ func reloadSlots(slots []*slot) ([]*slot, error) {
 		if c != nil && e == nil {
 			newslots, e := FetchSlots(c)
 			if e == nil {
-			return newslots, nil
+				return newslots, nil
 			}
 		}
 	}
 	return nil, errors.New("redigo-cluster: reload slots fail!")
 }
-
 
 // caculate hash according string within {}, otherwise whole key will be used.
 func hash(key string) uint16 {
@@ -315,35 +315,34 @@ func hash(key string) uint16 {
 		}
 	}
 	if s == len(key) {
-		return crc16(key) & (kClusterSlots-1)
+		return crc16(key) & (kClusterSlots - 1)
 	}
 
-	for e = s+1; e < len(key); e++ {
+	for e = s + 1; e < len(key); e++ {
 		if key[e] == '}' {
 			break
 		}
 	}
 
 	if e == len(key) || e == s+1 {
-		return crc16(key) & (kClusterSlots-1)
+		return crc16(key) & (kClusterSlots - 1)
 	}
 
-	return crc16(key[s+1:e]) & (kClusterSlots-1)
+	return crc16(key[s+1:e]) & (kClusterSlots - 1)
 }
-
 
 func ClusterFlushDb(c redis.Conn) error {
 	cl, ok := c.(*cluster)
 	if !ok {
 		return fmt.Errorf("redigo-cluster: the c in ClusterFlushDb(c) is not *cluster type, but %T", c)
 	}
-        for _, slot := range cl.slots {
-                slot.Do("FLUSHDB")
-        }
+	for _, slot := range cl.slots {
+		slot.Do("FLUSHDB")
+	}
 	return nil
 }
 
-func ClusterPrint(c redis.Conn) error{
+func ClusterPrint(c redis.Conn) error {
 	cl, ok := c.(*cluster)
 	if !ok {
 		return fmt.Errorf("redigo-cluster: the c in ClusterFlushDb(c) is not *cluster type, but %T", c)
